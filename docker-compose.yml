@@ -1,0 +1,97 @@
+version: "3.4"
+
+networks:
+  new:
+
+services:
+  clickhouse-db:
+    networks:
+      new:
+        aliases:
+          - clickhouse
+    image: yandex/clickhouse-server:latest
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: 123qwe123
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+  redis-cache:
+    networks:
+      new:
+        aliases:
+          - redis-cache
+    image: redis:latest
+    ports:
+      - "6379:6379"
+  nats-server:
+    image: nats:latest
+    networks:
+      new:
+        aliases:
+          - nats-server
+    ports:
+      - "4222:4222"
+  postgres-db:
+    image: postgres:latest
+    networks:
+      new:
+        aliases:
+          - database
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 10s
+      start_period: 20s
+      retries: 5
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123qwe123
+      POSTGRES_DB: hezzl_test
+  migrate-pg:
+    image: migrate/migrate
+    networks:
+      - new
+    volumes:
+      - ./migrations/postgres:/migrations/postgres
+    command:
+      - "-path=/migrations/postgres"
+      - "-database=postgres://postgres:123qwe123@database/hezzl_test?sslmode=disable"
+      - "up"
+    depends_on:
+      - postgres-db
+  app:
+    networks:
+      - new
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      APP_ENV: docker
+      APP_PORT: :8080
+
+      DB_HOST: database
+      DB_USER: postgres
+      DB_PASS: 123qwe123
+      DB_NAME: hezzl_test
+      DB_SSLMODE: disable
+
+      REDIS_DB: 0
+      REDIS_HOST: redis-cache:6379
+
+      NATS_QUEUE: item.create
+      NATS_HOST: nats-server
+
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PASSWORD: 123qwe123
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_DB: default
+    depends_on:
+      - clickhouse-db
+      - redis-cache
+      - migrate-pg
+      - nats-server
