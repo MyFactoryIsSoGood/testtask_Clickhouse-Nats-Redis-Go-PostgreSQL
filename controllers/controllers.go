@@ -7,6 +7,7 @@ import (
 	"hezzl/db"
 	"hezzl/models"
 	"hezzl/nats"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -18,7 +19,7 @@ func CreateItem(c *gin.Context) {
 	companyId, _ := strconv.Atoi(c.Query("campaignId"))
 	payload := models.Item{}
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(400, gin.H{"error": "Invalid payload"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
 		return
 	}
 
@@ -30,11 +31,11 @@ func CreateItem(c *gin.Context) {
 
 	rows, err := db.DB_conn.Query(`SELECT * FROM campaigns WHERE id = $1`, item.CampaignID)
 	if err != nil {
-		c.JSON(500, gin.H{"message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 	if !rows.Next() { //если строк нет
-		c.JSON(404, gin.H{"message": ErrorItemNotFound})
+		c.JSON(http.StatusNotFound, gin.H{"code": 3, "message": ErrorItemNotFound, "details": []string{}})
 		return
 	}
 
@@ -44,7 +45,7 @@ func CreateItem(c *gin.Context) {
 		item.CampaignID,
 		item.Description)
 	if err != nil {
-		c.JSON(500, gin.H{"message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
@@ -54,7 +55,7 @@ func CreateItem(c *gin.Context) {
 		item.CampaignID,
 		item.Description)
 	if err != nil {
-		c.JSON(500, gin.H{"message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
@@ -63,7 +64,7 @@ func CreateItem(c *gin.Context) {
 	err = rows.Scan(&resp.ID, &resp.CampaignID, &resp.Name, &resp.Description, &resp.Priority, &resp.Removed, &resp.CreatedAt)
 	_ = rows.Close()
 	if err != nil {
-		c.JSON(500, gin.H{"message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 	//Инвалидируем кэш
@@ -81,7 +82,7 @@ func CreateItem(c *gin.Context) {
 	}
 	itemJSON, _ := json.Marshal(itemLog)
 	_ = nats.NC.Publish(os.Getenv("NATS_QUEUE"), itemJSON)
-	c.JSON(200, resp)
+	c.JSON(http.StatusOK, resp)
 	return
 }
 
@@ -90,13 +91,13 @@ func GetItems(c *gin.Context) {
 	found, items := cache.GetItems("items")
 	if found {
 		resp = items
-		c.JSON(200, resp)
+		c.JSON(http.StatusOK, resp)
 		return
 	}
 
 	rows, err := db.DB_conn.Query("SELECT * FROM items")
 	if err != nil {
-		c.JSON(500, gin.H{"message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 	for rows.Next() {
@@ -107,12 +108,12 @@ func GetItems(c *gin.Context) {
 	_ = rows.Close()
 
 	if resp == nil {
-		c.JSON(200, []models.Item{})
+		c.JSON(http.StatusOK, []models.Item{})
 		return
 	}
 	cache.SetItems("items", resp)
 
-	c.JSON(200, resp)
+	c.JSON(http.StatusOK, resp)
 }
 
 func UpdateItem(c *gin.Context) {
@@ -121,19 +122,19 @@ func UpdateItem(c *gin.Context) {
 
 	transaction, err := db.DB_conn.Begin()
 	if err != nil {
-		c.JSON(500, gin.H{"message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
 	rows, err := transaction.Query(`SELECT * FROM items WHERE id = $1 AND campaign_id = $2 FOR UPDATE`, itemID, campaignID)
 	if err != nil {
 		_ = transaction.Rollback()
-		c.JSON(500, gin.H{"message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 	if !rows.Next() {
 		_ = transaction.Rollback()
-		c.JSON(404, gin.H{"message": ErrorItemNotFound})
+		c.JSON(http.StatusNotFound, gin.H{"code": 3, "message": ErrorItemNotFound, "details": []string{}})
 		return
 	}
 	_ = rows.Close()
@@ -142,12 +143,12 @@ func UpdateItem(c *gin.Context) {
 
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		_ = transaction.Rollback()
-		c.JSON(400, gin.H{"error": "Invalid payload"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
 		return
 	}
 	if payload.Name == "" {
 		_ = transaction.Rollback()
-		c.JSON(400, gin.H{"message": "errors.item.emptyName"})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "errors.item.emptyName"})
 		return
 	}
 
@@ -158,7 +159,7 @@ func UpdateItem(c *gin.Context) {
 		campaignID)
 	if err != nil {
 		_ = transaction.Rollback()
-		c.JSON(500, gin.H{"message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
@@ -166,12 +167,12 @@ func UpdateItem(c *gin.Context) {
 
 	if err != nil {
 		_ = transaction.Rollback()
-		c.JSON(500, gin.H{"message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 	if !rows.Next() { // If no rows found
 		_ = transaction.Rollback()
-		c.JSON(404, gin.H{"message": ErrorItemNotFound})
+		c.JSON(http.StatusNotFound, gin.H{"code": 3, "message": ErrorItemNotFound, "details": []string{}})
 		return
 	}
 
@@ -181,14 +182,14 @@ func UpdateItem(c *gin.Context) {
 
 	if err != nil {
 		_ = transaction.Rollback()
-		c.JSON(500, gin.H{"message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
 	err = transaction.Commit()
 	if err != nil {
 		_ = transaction.Rollback()
-		c.JSON(500, gin.H{"message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 	//Инвалидируем кэш
@@ -206,7 +207,7 @@ func UpdateItem(c *gin.Context) {
 	}
 	itemJSON, _ := json.Marshal(itemLog)
 	_ = nats.NC.Publish(os.Getenv("NATS_QUEUE"), itemJSON)
-	c.JSON(200, resp)
+	c.JSON(http.StatusOK, resp)
 }
 
 func DeleteItem(c *gin.Context) {
@@ -216,17 +217,17 @@ func DeleteItem(c *gin.Context) {
 
 	rows, err := db.DB_conn.Query(`SELECT * FROM items WHERE id = $1 AND campaign_id = $2`, itemID, campaignID)
 	if err != nil {
-		c.JSON(500, gin.H{"message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 	if !rows.Next() {
-		c.JSON(404, gin.H{"message": ErrorItemNotFound})
+		c.JSON(http.StatusNotFound, gin.H{"code": 3, "message": ErrorItemNotFound, "details": []string{}})
 		return
 	} else {
 		err = rows.Scan(&resp.ID, &resp.CampaignID, &resp.Name, &resp.Description, &resp.Priority, &resp.Removed, &resp.CreatedAt)
 		_ = rows.Close()
 		if err != nil {
-			c.JSON(500, gin.H{"message": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			return
 		}
 	}
@@ -236,7 +237,7 @@ func DeleteItem(c *gin.Context) {
 		itemID,
 		campaignID)
 	if err != nil {
-		c.JSON(500, gin.H{"message": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
@@ -255,5 +256,5 @@ func DeleteItem(c *gin.Context) {
 	_ = nats.NC.Publish(os.Getenv("NATS_QUEUE"), itemJSON)
 	_ = cache.InvalidateItems()
 
-	c.JSON(200, gin.H{"id": resp.ID, "campaignId": resp.CampaignID, "removed": resp.Removed})
+	c.JSON(http.StatusOK, gin.H{"id": resp.ID, "campaignId": resp.CampaignID, "removed": resp.Removed})
 }
