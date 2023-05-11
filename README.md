@@ -1,4 +1,16 @@
-# Тестовое задание для компании Hezzl
+<br />
+<div align="center">
+  <a href="https://github.com/MyFactoryIsSoGood/advisory_backend">
+    <img src="https://hezzl.com/images/uploads/5712/logo_hezzl_400_90.png" alt="Logo">
+  </a>
+
+<h3 align="center">Тестовое задание для компании Hezzl</h3>
+
+  <p align="center">
+    Стек: Go, Gin, Clickhouse, Nats, PostgreSQL, Redis, Docker
+    <br>
+  </p>
+</div>
 
 ## Задача
 Развернуть сервис на Golang, Postgres, Clickhouse, Nats , Redis
