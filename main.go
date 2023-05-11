@@ -24,12 +24,13 @@ func main() {
 	logs.Connect()
 	nats.Connect()
 	go nats.Subscribe()
-	app := gin.Default()
 
+	app := gin.Default()
 	app.POST("/item/create", controllers.CreateItem)
 	app.PATCH("/item/update", controllers.UpdateItem)
 	app.DELETE("/item/remove", controllers.DeleteItem)
 	app.GET("/items/list", controllers.GetItems)
+	app.GET("/logs", controllers.GetLogs)
 
 	_ = app.Run(os.Getenv("APP_PORT"))
 }
