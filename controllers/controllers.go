@@ -116,6 +116,8 @@ func GetItems(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// UpdateItem обновляет запись. Исходя из т.з. предположил, что изменять можно только name и description, т.к. removed
+// выставляется отдельным методом, priority выставяляется системно, а created и campaign_id не стоит изменять.
 func UpdateItem(c *gin.Context) {
 	itemID, _ := strconv.Atoi(c.Query("id"))
 	campaignID, _ := strconv.Atoi(c.Query("campaignId"))
