@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"hezzl/cache"
 	"hezzl/db"
+	"hezzl/logs"
 	"hezzl/models"
 	"hezzl/nats"
 	"net/http"
@@ -259,4 +260,24 @@ func DeleteItem(c *gin.Context) {
 	_ = cache.InvalidateItems()
 
 	c.JSON(http.StatusOK, gin.H{"id": resp.ID, "campaignId": resp.CampaignID, "removed": resp.Removed})
+}
+
+// GetLogs - обработчик для получения логов из Clickhouse, чтобы их можно было легко проверить
+func GetLogs(c *gin.Context) {
+	rows, _ := logs.ClickhouseDB.Query("SELECT Id,CampaignId,Name,CAST(Description as VARCHAR),CAST(Priority as INT),CAST(Removed as BOOL),CAST(EventTime as timestamp) FROM Items ORDER BY EventTime DESC\n")
+	defer rows.Close()
+
+	var logs []models.ItemLog
+	for rows.Next() {
+		var log models.ItemLog
+		err := rows.Scan(&log.ID, &log.CampaignID, &log.Name, &log.Description, &log.Priority, &log.Removed, &log.EventTime)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		logs = append(logs, log)
+	}
+
+	c.JSON(http.StatusOK, logs)
 }

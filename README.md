@@ -1,4 +1,16 @@
-# Тестовое задание для компании Hezzl
+<br />
+<div align="center">
+  <a href="https://github.com/MyFactoryIsSoGood/advisory_backend">
+    <img src="https://hezzl.com/images/uploads/5712/logo_hezzl_400_90.png" alt="Logo">
+  </a>
+
+<h3 align="center">Тестовое задание для компании Hezzl</h3>
+
+  <p align="center">
+    Стек: Go, Gin, Clickhouse, Nats, PostgreSQL, Redis, Docker
+    <br>
+  </p>
+</div>
 
 ## Задача
 Развернуть сервис на Golang, Postgres, Clickhouse, Nats , Redis
@@ -12,6 +24,7 @@
 - При добавлении, редактировании или удалении записи в Postgres писать лог события в Clickhouse через очередь Nats.
 
 ## Описание проекта
+### Схема
 service<br />
 ├───cache - **кэширование через Redis**<br />
 ├───controllers - **обработчики для CRUD**<br />
@@ -23,13 +36,31 @@ service<br />
 ├───models - **модели**<br />
 └───nats  - **Подключение к серверу Nats**<br />
 
+### Эндпоинты
+- `/items/list` **GET** - список предметов<br />
+- `/logs` **GET** - список логов событий<br />
+- `/item/create?campaignId=X` **POST** - создание предмета<br />
+{<br />
+    "name":"XXX",<br />
+    "description":"XXX"<br />
+}<br />
+- `/item/update?id=X&campaignId=X` **PATCH** - изменение предмета<br />
+{<br />
+    "name":"XXX",<br />
+    "description":"XXX"<br />
+}<br />
+- `/item/remove?id=X&campaignId=X` **DELETE** - удаление<br />
+
+
 
 ## Результат
 Все требования выполнены, сервис развернут в Docker. Поднимается с помощью 
 `docker-compose up`
 Доступен по `0.0.0.0:8080`. При миграции создается компания с id=1
 
+- Сервис написан с использованием Gin
 - Сервис конфигурируется через переменные окружения в файле docker-compose.yml
 - Коммуникация с PostgreSQL и Clickhouse ведется с помощью `database/sql` без ORM и маппинга для меньшей нагрузки и большей прозрачности происходящего, но я умею работать и с ORM.
 - `Subscriber` и `Publisher` в **Nats** находятся в одном сервисе для наглядности и упрощения. Подписчик живет в горутине. Разделение на два сервиса можно провести без проблем.
 - Миграции производятся с помощью https://github.com/golang-migrate/migrate в docker-compose
+- Реализован дополнительный эндпоинт позволяющий получить записи о событиях из Clickhouse
