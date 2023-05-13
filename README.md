@@ -39,17 +39,17 @@ service<br />
 ### Эндпоинты
 - `/items/list` **GET** - список предметов<br />
 - `/service/logs` **GET** - список логов событий<br />
-- `/item/create?campaignId=X` **POST** - создание предмета<br />
+- `/items/create?campaignId=X` **POST** - создание предмета<br />
 {<br />
     "name":"XXX",<br />
     "description":"XXX"<br />
 }<br />
-- `/item/update?id=X&campaignId=X` **PATCH** - изменение предмета<br />
+- `/items/update?id=X&campaignId=X` **PATCH** - изменение предмета<br />
 {<br />
     "name":"XXX",<br />
     "description":"XXX"<br />
 }<br />
-- `/item/remove?id=X&campaignId=X` **DELETE** - удаление<br />
+- `/items/remove?id=X&campaignId=X` **DELETE** - удаление<br />
 
 
 

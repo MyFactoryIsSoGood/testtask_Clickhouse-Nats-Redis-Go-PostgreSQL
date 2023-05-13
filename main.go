@@ -39,7 +39,7 @@ func Initialize() {
 	}
 
 	if len(initErrors) != 0 {
-		panic(fmt.Sprintf("Запуск приложения невозможен из-за следующих ошибок инициализации %s", strings.Join(initErrors, ", ")))
+		panic(fmt.Sprintf("Запуск приложения невозможен из-за следующих ошибок инициализации %s", strings.Join(initErrors, ",\n")))
 	}
 
 	go func() { // работа без логирования возможна, но на эту ошибку нужно будет обратить внимание
@@ -61,14 +61,12 @@ func main() {
 
 	app := gin.Default()
 
-	item := app.Group("/item")
 	items := app.Group("/items")
 	service := app.Group("/service")
 
-	item.POST("/create", controllers.CreateItem)
-	item.PATCH("/update", controllers.UpdateItem)
-	item.DELETE("/remove", controllers.DeleteItem)
-
+	items.POST("/create", controllers.CreateItem)
+	items.PATCH("/update", controllers.UpdateItem)
+	items.DELETE("/remove", controllers.DeleteItem)
 	items.GET("/list", controllers.GetItems)
 
 	service.GET("/logs", controllers.GetLogs)
