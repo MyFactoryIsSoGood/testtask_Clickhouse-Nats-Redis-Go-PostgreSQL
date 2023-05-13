@@ -12,33 +12,34 @@ import (
 	"hezzl/nats"
 	"log"
 	"os"
+	"strings"
 )
 
 // Initialize инициализирует все необходимые подключения и зависимости
 func Initialize() {
-	var initErrors []error
+	var initErrors []string
 	err := cache.Connect()
 	if err != nil {
-		initErrors = append(initErrors, err)
+		initErrors = append(initErrors, err.Error())
 	}
 
 	err = db.Connect()
 	if err != nil {
-		initErrors = append(initErrors, err)
+		initErrors = append(initErrors, err.Error())
 	}
 
 	err = logs.Connect()
 	if err != nil {
-		initErrors = append(initErrors, err)
+		initErrors = append(initErrors, err.Error())
 	}
 
 	err = nats.Connect()
 	if err != nil {
-		initErrors = append(initErrors, err)
+		initErrors = append(initErrors, err.Error())
 	}
 
 	if len(initErrors) != 0 {
-		panic(fmt.Sprintf("Запуск приложения невозможен из-за следующих ошибок инициализации %s", initErrors))
+		panic(fmt.Sprintf("Запуск приложения невозможен из-за следующих ошибок инициализации %s", strings.Join(initErrors, ", ")))
 	}
 
 	go func() { // работа без логирования возможна, но на эту ошибку нужно будет обратить внимание
