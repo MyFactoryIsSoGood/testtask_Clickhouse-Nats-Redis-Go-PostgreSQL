@@ -78,8 +78,7 @@ func CreateItem(c *gin.Context) {
 		Description: resp.Description,
 		Priority:    resp.Priority,
 		Removed:     resp.Removed,
-		//Задавать время на стороне БД с помощью NOW() - неправильно. При недоступе базы время будет искажено
-		EventTime: time.Now(),
+		EventTime:   time.Now(),
 	}
 	itemJSON, _ := json.Marshal(itemLog)
 	_ = nats.NC.Publish(os.Getenv("NATS_QUEUE"), itemJSON)
@@ -142,7 +141,8 @@ func UpdateItem(c *gin.Context) {
 	}
 	_ = rows.Close()
 
-	payload := models.Item{}
+	//Для разделения поведения при отсутствии поля description и при наличии description=""
+	payload := models.Item{Description: "not provided"}
 
 	if err := c.ShouldBindJSON(&payload); err != nil {
 		_ = transaction.Rollback()
@@ -155,11 +155,22 @@ func UpdateItem(c *gin.Context) {
 		return
 	}
 
-	_, err = transaction.Exec(`UPDATE items SET name = $1, description = $2 WHERE id = $3 AND campaign_id = $4`,
-		payload.Name,
-		payload.Description,
-		itemID,
-		campaignID)
+	var query string
+	if payload.Description == "not provided" { // если поле не пришло, оставляем описание неизменным
+		query = "UPDATE items SET name = $1 WHERE id = $2 AND campaign_id = $3"
+		_, err = transaction.Exec(query,
+			payload.Name,
+			itemID,
+			campaignID)
+	} else { // если поле пришло, заменяем описание. Даже на пустую строку
+		query = "UPDATE items SET name = $1, description = $2 WHERE id = $3 AND campaign_id = $4"
+		_, err = transaction.Exec(query,
+			payload.Name,
+			payload.Description,
+			itemID,
+			campaignID)
+	}
+
 	if err != nil {
 		_ = transaction.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -267,7 +278,7 @@ func GetLogs(c *gin.Context) {
 	rows, _ := logs.ClickhouseDB.Query("SELECT Id,CampaignId,Name,CAST(Description as VARCHAR),CAST(Priority as INT),CAST(Removed as BOOL),CAST(EventTime as timestamp) FROM Items ORDER BY EventTime DESC\n")
 	defer rows.Close()
 
-	var logs []models.ItemLog
+	var logItems []models.ItemLog
 	for rows.Next() {
 		var log models.ItemLog
 		err := rows.Scan(&log.ID, &log.CampaignID, &log.Name, &log.Description, &log.Priority, &log.Removed, &log.EventTime)
@@ -276,8 +287,8 @@ func GetLogs(c *gin.Context) {
 			return
 		}
 
-		logs = append(logs, log)
+		logItems = append(logItems, log)
 	}
 
-	c.JSON(http.StatusOK, logs)
+	c.JSON(http.StatusOK, logItems)
 }
