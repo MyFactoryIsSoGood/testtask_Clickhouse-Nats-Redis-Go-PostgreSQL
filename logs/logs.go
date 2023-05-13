@@ -9,7 +9,7 @@ import (
 
 var ClickhouseDB *sql.DB
 
-func Connect() {
+func Connect() error {
 	conn := clickhouse.OpenDB(&clickhouse.Options{
 		Addr: []string{fmt.Sprintf("%s:%d", os.Getenv("CLICKHOUSE_HOST"), 8123)},
 		Auth: clickhouse.Auth{
@@ -20,9 +20,14 @@ func Connect() {
 		Protocol: clickhouse.HTTP,
 	})
 	ClickhouseDB = conn
+	err := conn.Ping()
+	if err != nil {
+		return err
+	}
 	// я долго бился с migrate, но он не проводил миграции для clickhouse, выдавая bad connection
 	// поэтому clickhouse мигрируем руками
 	Migrate()
+	return nil
 }
 
 func Migrate() {

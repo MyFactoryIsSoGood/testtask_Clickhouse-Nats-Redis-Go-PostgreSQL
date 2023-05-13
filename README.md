@@ -38,7 +38,7 @@ service<br />
 
 ### Эндпоинты
 - `/items/list` **GET** - список предметов<br />
-- `/logs` **GET** - список логов событий<br />
+- `/service/logs` **GET** - список логов событий<br />
 - `/item/create?campaignId=X` **POST** - создание предмета<br />
 {<br />
     "name":"XXX",<br />

@@ -13,7 +13,7 @@ import (
 var ctx = context.Background()
 var rdb *redis.Client
 
-func Connect() {
+func Connect() error {
 	db, _ := strconv.Atoi(os.Getenv("REDIS_DB"))
 	var addr string
 	var pass string
@@ -31,6 +31,12 @@ func Connect() {
 		Password: pass,
 		DB:       db,
 	})
+
+	_, err := rdb.Ping(ctx).Result()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func GetItems(key string) (bool, []models.Item) {

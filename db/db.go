@@ -8,7 +8,7 @@ import (
 
 var DB_conn *sql.DB
 
-func Connect() {
+func Connect() error {
 	connectionString := fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=%s",
 		os.Getenv("DB_USER"),
 		os.Getenv("DB_PASS"),
@@ -18,7 +18,9 @@ func Connect() {
 
 	conn, err := sql.Open("postgres", connectionString)
 	if err != nil {
-		panic(err)
+		return err
 	}
+
 	DB_conn = conn
+	return nil
 }
